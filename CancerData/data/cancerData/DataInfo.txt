@@ -1,0 +1,5 @@
+The expression profile and clinical data are all from the level 3 data available in the
+TCGA database (https://portal.gdc.cancer.gov/repository). Search terms: “Primary Site” IS
+“Bronchus and lung” AND “Project Id” IS “TCGA-LUAD” AND “Workflow Type” IS
+“HTSeq-FPKM” AND “Data Category” IS “TranscriptomeProfiling” AND “Data Type”
+IS “Gene Expression Quantification.”
