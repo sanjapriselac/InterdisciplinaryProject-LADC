@@ -1,9 +1,10 @@
 YS = ["y_qn", "y_05", "y_1", "y_25", "y_5", "y_10"]
 RES = ["DEGenes", "DEGenes_05", "DEGenes_1", "DEGenes_25", "DEGenes_5", "DEGenes_10"]
+TABS = ["WilcoxonOriginalQn", "WilcoxonQnDp05", "WilcoxonQnDp1", "WilcoxonQnDp25", "WilcoxonQnDp5", "WilcoxonQnDp10"]
 
 rule all:
     input:
-        expand("/tmp/repo/DGE_LADC/results/{res}.csv", res = RES)
+        expand( "/tmp/repo/DGE_LADC/results/{tabs}.csv", tabs = TABS)
 
 rule preprocessing_expressionMatrix:
     input:
@@ -48,12 +49,12 @@ rule DGEa:
     script:
         "/tmp/repo/DGE_LADC/workflow/scripts/dge.R"
 
-#rule analysis:
-#    input:
-#        expand([ "/tmp/repo/DGE_snakemake/results/R/{t}.csv", "/tmp/repo/DGE_snakemake/results/R/{res}.csv"], t=T, res = RES)
-#    output:
-#        "/tmp/repo/DGE_snakemake/results/R/rankTests.csv"
-#    conda:
-#        "/tmp/repo/DGE_snakemake/workflow/envs/Renv.yaml"
-#    script:
-#        "/tmp/repo/DGE_snakemake/workflow/scripts/results_analysis.R"
+rule analysis:
+    input:
+        expand(["/tmp/repo/DGE_LADC/data/Metadata/The_differentially_expressed.csv", "/tmp/repo/DGE_LADC/results/{res}.csv"], res = RES)
+    output:
+        expand("/tmp/repo/DGE_LADC/results/{tabs}.csv", tabs = TABS)
+    conda:
+        "/tmp/repo/DGE_LADC/workflow/envs/Renv.yaml"
+    script:
+        "/tmp/repo/DGE_LADC/workflow/scripts/results_analysis.R"

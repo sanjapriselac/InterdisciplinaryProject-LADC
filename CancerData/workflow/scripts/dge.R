@@ -168,10 +168,10 @@ venn.diagram(genes.down[c(1,2,5,6,7)], filename = "/tmp/repo/DGE_LADC/results/pl
 ##################################################################################################################
 
 
-save(DEGenes, file=snakemake@output[[1]])
-save(DEGenes.05, file=snakemake@output[[2]])
-save(DEGenes.1, file=snakemake@output[[3]])
-save(DEGenes.25, file=snakemake@output[[4]])
-save(DEGenes.5, file=snakemake@output[[5]])
-save(DEGenes.10, file=snakemake@output[[6]])
+write.csv(DEGenes, file=snakemake@output[[1]])
+write.csv(DEGenes.05, file=snakemake@output[[2]])
+write.csv(DEGenes.1, file=snakemake@output[[3]])
+write.csv(DEGenes.25, file=snakemake@output[[4]])
+write.csv(DEGenes.5, file=snakemake@output[[5]])
+write.csv(DEGenes.10, file=snakemake@output[[6]])
 
