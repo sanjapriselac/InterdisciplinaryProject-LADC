@@ -21,7 +21,7 @@ tab.original$logFC <- tab.original$Log2.Fold_Change.
 
 ###########################################################################################################
 
-## tab main is the table where the first n p values are taken
+
 test.orders <- function(tab.main, tab.sub, lf = 1) {
   if (lf > 0) {
     tab.main <- tab.main[which(tab.main$logFC > lf & tab.main$adj.P.Val < 0.05), ]
@@ -31,7 +31,7 @@ test.orders <- function(tab.main, tab.sub, lf = 1) {
     tab.sub <- tab.sub[which(tab.sub$logFC < lf & tab.sub$adj.P.Val < 0.05), ]
   }
   tab.main <- tab.main[order(tab.main$adj.P.Val), c('ID', 'adj.P.Val')]
-  deparse(substitute(tab.main))
+  #deparse(substitute(tab.main))
   tab.main <- rename(tab.main, adjPval.main = adj.P.Val)
   tab.test <- merge(tab.main, tab.sub[,  c('ID', 'adj.P.Val')], by='ID', all=TRUE)
   tab.test <- rename(tab.test, adjPval.sub = adj.P.Val)
@@ -41,26 +41,50 @@ test.orders <- function(tab.main, tab.sub, lf = 1) {
 }
 
 
-tab1 <- test.orders(tab.original, tab.qn)
-tab1 <- rename(tab1, adjP.original = adjPval.main, adjP.qn =adjPval.sub)
-write.csv(tab1, file=snakemake@output[[1]])
+tab1up <- test.orders(tab.original, tab.qn)
+tab1up <- rename(tab1up, adjP.original = adjPval.main, adjP.qn =adjPval.sub)
+write.csv(tab1up, file=snakemake@output[[1]], row.names = FALSE)
 
-tab2 <- test.orders(tab.qn, tab.dp05)
-tab2 <- rename(tab2, adjP.qn = adjPval.main, adjP.dp05 =adjPval.sub)
-write.csv(tab2, file=snakemake@output[[2]])
+tab1down <- test.orders(tab.original, tab.qn, lf=-1)
+tab1down <- rename(tab1down, adjP.original = adjPval.main, adjP.qn =adjPval.sub)
+write.csv(tab1down, file=snakemake@output[[7]], row.names = FALSE)
 
-tab3 <- test.orders(tab.qn, tab.dp1)
-tab3 <- rename(tab3, adjP.qn = adjPval.main, adjP.dp1 =adjPval.sub)
-write.csv(tab3, file=snakemake@output[[3]])
+tab2up <- test.orders(tab.qn, tab.dp05)
+tab2up <- rename(tab2up, adjP.qn = adjPval.main, adjP.dp05 =adjPval.sub)
+write.csv(tab2up, file=snakemake@output[[2]], row.names = FALSE)
 
-tab4 <- test.orders(tab.qn, tab.dp25)
-tab4 <- rename(tab4, adjP.qn = adjPval.main, adjP.dp25 =adjPval.sub)
-write.csv(tab4, file=snakemake@output[[4]])
+tab2down <- test.orders(tab.qn, tab.dp05, lf=-1)
+tab2down <- rename(tab2down, adjP.qn = adjPval.main, adjP.dp05 =adjPval.sub)
+write.csv(tab2down, file=snakemake@output[[8]], row.names = FALSE)
 
-tab5 <- test.orders(tab.qn, tab.dp5)
-tab5 <- rename(tab5, adjP.qn = adjPval.main, adjP.dp5 =adjPval.sub)
-write.csv(tab5, file=snakemake@output[[5]])
+tab3up <- test.orders(tab.qn, tab.dp1)
+tab3up <- rename(tab3up, adjP.qn = adjPval.main, adjP.dp1 =adjPval.sub)
+write.csv(tab3up, file=snakemake@output[[3]], row.names = FALSE)
 
-tab6 <- test.orders(tab.qn, tab.dp10)
-tab6 <- rename(tab6, adjP.qn = adjPval.main, adjP.dp10 =adjPval.sub)
-write.csv(tab6, file=snakemake@output[[6]])
+tab3down <- test.orders(tab.qn, tab.dp1, lf=-1)
+tab3down <- rename(tab3down, adjP.qn = adjPval.main, adjP.dp1 =adjPval.sub)
+write.csv(tab3down, file=snakemake@output[[9]], row.names = FALSE)
+
+tab4up <- test.orders(tab.qn, tab.dp25)
+tab4up <- rename(tab4up, adjP.qn = adjPval.main, adjP.dp25 =adjPval.sub)
+write.csv(tab4up, file=snakemake@output[[4]], row.names = FALSE)
+
+tab4down <- test.orders(tab.qn, tab.dp25, lf=-1)
+tab4down <- rename(tab4down, adjP.qn = adjPval.main, adjP.dp25 =adjPval.sub)
+write.csv(tab4down, file=snakemake@output[[10]], row.names = FALSE)
+
+tab5up <- test.orders(tab.qn, tab.dp5)
+tab5up <- rename(tab5up, adjP.qn = adjPval.main, adjP.dp5 =adjPval.sub)
+write.csv(tab5up, file=snakemake@output[[5]], row.names = FALSE)
+
+tab5down <- test.orders(tab.qn, tab.dp5, lf=-1)
+tab5down <- rename(tab5down, adjP.qn = adjPval.main, adjP.dp5 =adjPval.sub)
+write.csv(tab5down, file=snakemake@output[[11]], row.names = FALSE)
+
+tab6up <- test.orders(tab.qn, tab.dp10)
+tab6up <- rename(tab6up, adjP.qn = adjPval.main, adjP.dp10 =adjPval.sub)
+write.csv(tab6up, file=snakemake@output[[6]], row.names = FALSE)
+
+tab6down <- test.orders(tab.qn, tab.dp10, lf=-1)
+tab6down <- rename(tab6down, adjP.qn = adjPval.main, adjP.dp10 =adjPval.sub)
+write.csv(tab6down, file=snakemake@output[[12]], row.names = FALSE)

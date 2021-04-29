@@ -1,6 +1,6 @@
 YS = ["y_qn", "y_05", "y_1", "y_25", "y_5", "y_10"]
 RES = ["DEGenes", "DEGenes_05", "DEGenes_1", "DEGenes_25", "DEGenes_5", "DEGenes_10"]
-TABS = ["WilcoxonOriginalQn", "WilcoxonQnDp05", "WilcoxonQnDp1", "WilcoxonQnDp25", "WilcoxonQnDp5", "WilcoxonQnDp10"]
+TABS = ["WilcoxonOriginalQnUp", "WilcoxonQnDp05Up", "WilcoxonQnDp1Up", "WilcoxonQnDp25Up", "WilcoxonQnDp5Up", "WilcoxonQnDp10Up", "WilcoxonOriginalQnDown", "WilcoxonQnDp05Down", "WilcoxonQnDp1Down", "WilcoxonQnDp25Down", "WilcoxonQnDp5Down", "WilcoxonQnDp10Down"]
 
 rule all:
     input:
