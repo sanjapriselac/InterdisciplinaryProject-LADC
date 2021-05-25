@@ -80,14 +80,25 @@ sensitivity(y)
 ## TME Genes: 98.47
 ## all coding genes: 
 
+## density plot
+y.plot <- as.vector(t(y$counts[1:10, ]))
+y.plot <- data.frame(values=y.plot, Gene= rep(rownames(y.tme$counts)[1:10], each=594))
+p <- ggplot(y.plot, aes(values, fill = Gene)) + 
+  geom_density(alpha = 0.2) + 
+  xlab("Expression Values") +
+  xlim(0, 300) + 
+  theme(text = element_text(size=15))
+
 y.qn <- quantileNormalisation(y, "/tmp/repo/DGE_LADC/results/mean_vector.csv", TRUE) 
 
-#myPalette <- c(brewer.pal(9, "Set1"), brewer.pal(8, "Set2"))
-## Plot FPKM distribution (ragments Per Kilobase of sequence per Million)
-#plotDensities(y.qn, col=myPalette[1:dim(y.qn$counts)[1]], legend=FALSE)   #pretty skewed
-
 log2.y <- y.tme
-log2.y$counts <- t(apply(log2.y$counts + 0.1, 1, log2)) ## why does apply change the matrix?
+log2.y$counts <- t(apply(log2.y$counts + 1, 1, log2)) ## why does apply change the matrix?
+
+## heatmap
+heatmap.2(log2.y$counts[, c(which(color == 'green '), which(color != 'green '))], trace='none', scale = "none", dendrogram = "none", 
+          ColSideColors =color[c(which(color == 'green '), which(color != 'green '))],  Colv=FALSE, sepcolor="white", margins=c(1, 4), cexCol = 0.4) 
+legend("topright", title = "Tissues",legend=c("Normal","Not Normal"), fill=c("green", "blue"), cex=0.8, box.lty=0)
+
 log2.y.qn <- quantileNormalisation(log2.y)
 
 #plotDensities(log2.y, legend=FALSE)
@@ -99,7 +110,7 @@ log2.y.qn <- quantileNormalisation(log2.y)
 # Differentially Private Quantile normalisation
 ############################################################################################
 
-eps <- c(0.05, 0.1, 1, 5, 10)
+eps <- c(0.5, 1, 2.5, 5, 10)
 b <- floor(sensitivity(y)/eps)
 
 ## calculate laplacian 
@@ -110,11 +121,11 @@ y.qn.5 <- quantileNormalisation.dp(y.tme, b[4], "/tmp/repo/DGE_LADC/results/mean
 y.qn.10 <- quantileNormalisation.dp(y.tme, b[5], "/tmp/repo/DGE_LADC/results/mean_vector_10.csv") ## 95 negatives
 
 #log2.y <- y.tme
-y.qn.05$counts <- t(apply(y.qn.05$counts + 0.1, 1, log2)) ## why does apply change the matrix?
-y.qn.1$counts <- t(apply(y.qn.1$counts + 0.1, 1, log2))
-y.qn.25$counts <- t(apply(y.qn.25$counts + 0.1, 1, log2))
-y.qn.5$counts <- t(apply(y.qn.5$counts + 0.1, 1, log2))
-y.qn.10$counts <- t(apply(y.qn.10$counts + 0.1, 1, log2))
+y.qn.05$counts <- t(apply(y.qn.05$counts + 1, 1, log2)) ## why does apply change the matrix?
+y.qn.1$counts <- t(apply(y.qn.1$counts + 1, 1, log2))
+y.qn.25$counts <- t(apply(y.qn.25$counts + 1, 1, log2))
+y.qn.5$counts <- t(apply(y.qn.5$counts + 1, 1, log2))
+y.qn.10$counts <- t(apply(y.qn.10$counts + 1, 1, log2))
 
 #plotDensities(y.qn.25, col=myPalette[1:16], legend=FALSE) 
 
@@ -125,6 +136,7 @@ save(y.qn.1, file=snakemake@output[[3]])
 save(y.qn.25, file=snakemake@output[[4]])
 save(y.qn.5, file=snakemake@output[[5]])
 save(y.qn.10, file=snakemake@output[[6]])
+save(log2.y, file=snakemake@output[[7]])
 
 ############################################################################################
 # Data clustering (only for quantile-normalised data)

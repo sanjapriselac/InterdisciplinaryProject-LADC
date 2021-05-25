@@ -1,6 +1,6 @@
 #!/opt/conda/envs/R_env/bin/Rscript --vanilla
 # Sanja Priselac
-# 20/04/2021
+# 11/05/2021
 
 ##################
 library(ggplot2)
@@ -8,159 +8,128 @@ library(limma)
 library(edgeR)
 library(VennDiagram)
 library(svglite)
+library(scran)
 ##################
 
-for(i in 1:6) {
+for(i in 1:7) {
   load(snakemake@input[[i]])
 }
 
-
 ##################################################################################################################
 
-condition <- log2.y.qn$samples$group 
-design <- model.matrix(~ 0 + condition) 
-
-fit <- lmFit(log2.y.qn$counts, design)
-fit.05 <- lmFit(y.qn.05$counts, design)
-fit.1 <- lmFit(y.qn.1$counts, design)
-fit.25 <- lmFit(y.qn.25$counts, design)
-fit.5 <- lmFit(y.qn.5$counts, design)
-fit.10 <- lmFit(y.qn.10$counts, design)
-
-cont.matrix <- makeContrasts(
-  condition = conditionNonNormal - conditionNormal,
-  levels=design)
-
-#cont.matrix
-
-##################################################################################################################
-
-#fit1 <- treat(fit, lfc=log(1.2), trend=TRUE)
-## all 0 in fit1
-
-fit2 <- contrasts.fit(fit, cont.matrix)
-fit2.05 <- contrasts.fit(fit.05, cont.matrix)
-fit2.1 <- contrasts.fit(fit.1, cont.matrix)
-fit2.25 <- contrasts.fit(fit.25, cont.matrix)
-fit2.5 <- contrasts.fit(fit.5, cont.matrix)
-fit2.10 <- contrasts.fit(fit.10, cont.matrix)
-
-fit2 <- eBayes(fit2, trend=TRUE, robust=TRUE)
-fit2.05 <- eBayes(fit2.05, trend=TRUE, robust=TRUE)
-fit2.1 <- eBayes(fit2.1, trend=TRUE, robust=TRUE)
-fit2.25 <- eBayes(fit2.25, trend=TRUE, robust=TRUE)
-fit2.5 <- eBayes(fit2.5, trend=TRUE, robust=TRUE)
-fit2.10 <- eBayes(fit2.10, trend=TRUE, robust=TRUE)
-
-
-results <- decideTests(fit2, adjust.method = "fdr", p.value=0.05, lfc = 1) 
-results.05 <- decideTests(fit2.05, adjust.method = "fdr", p.value=0.05, lfc = 1) 
-results.1 <- decideTests(fit2.1, adjust.method = "fdr", p.value=0.05, lfc = 1) 
-results.25 <- decideTests(fit2.25, adjust.method = "fdr", p.value=0.05, lfc = 1) 
-results.5 <- decideTests(fit2.5, adjust.method = "fdr", p.value=0.05, lfc = 1) 
-results.10 <- decideTests(fit2.10, adjust.method = "fdr", p.value=0.05, lfc = 1) 
-
-volcano_plot <- function (fit, results) {
-  table <- topTable(fit, coef=1, number=Inf, adjust.method='BH', sort.by="P")
-  #gene_names <- table$ID   does not work with the subset
-  gene_names <- attributes(table)$row.names
-  xx <- table$logFC
-  name <- attributes(fit$contrasts)$dimnames$Contrasts
-  yy <- table$adj.P.Val
-  yy <- -log10(yy)
-  result <- as.factor(unname(results@.Data[gene_names,1]))
-  data <- data.frame(xx, yy, result)
-  p <- ggplot(data, aes(x=xx, y=yy, col=result)) + 
-    geom_point(size = 1.9) +
-    scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) +
-    #theme_minimal() +
-    xlab(paste("Log folds for", name)) +
-    ylab("-log10(adj.p.value)") +
-    ggtitle(paste0("Volcano plot for ", name))
-  return(p)  
+DEGtable <- function(DEGlist) {
+  res <- findMarkers(DEGlist$counts, DEGlist$samples$group, test.type = 'wilcox', add.summary=TRUE,  pval.type = "all", full.stats=TRUE)
+  FDR <- exp(res@listData$NonNormal@listData$stats.Normal@listData$log.FDR)
+  FDR <-  data.frame(Genes = res@listData$NonNormal@rownames, FDR = FDR)
+  pValue <- exp(res@listData$NonNormal@listData$stats.Normal@listData$log.p.value)
+  pValue <-  data.frame(Genes = res@listData$NonNormal@rownames, pValue = pValue)
+  adj.pValue <- data.frame(Genes = res@listData$NonNormal@rownames, adjPvalue = p.adjust(pValue$pValue, "BH"))
+  logFC <- apply(DEGlist$counts[, DEGlist$samples$group== "NonNormal"], 1, mean) - apply(DEGlist$counts[, DEGlist$samples$group== "Normal"], 1, mean) 
+  logFC <- data.frame(Genes = attributes(logFC)$names, logFC = logFC)
+  resultTable <- merge(FDR, pValue)
+  resultTable <- merge(resultTable, adj.pValue)
+  resultTable <- merge(resultTable, logFC)
+  results <- rep(0, nrow(resultTable))
+  results[which(resultTable$logFC>1 & resultTable$FDR < 0.05)] <- 1
+  results[which(resultTable$logFC<(-1) & resultTable$FDR < 0.05)] <- -1
+  resultTable$results <- as.factor(results)
+  return(resultTable)
 }
 
-vp <- volcano_plot(fit2, results)
-ggsave("VolcanoPlot.pdf", plot=vp, path = "/tmp/repo/DGE_LADC/results/plots")
-vp05 <- volcano_plot(fit2.05, results.05)
-ggsave("VolcanoPlot05.pdf", plot=vp05, path = "/tmp/repo/DGE_LADC/results/plots")
-vp1 <- volcano_plot(fit2.1, results.1)
-ggsave("VolcanoPlot1.pdf", plot=vp1, path = "/tmp/repo/DGE_LADC/results/plots")
-vp25 <- volcano_plot(fit2.25, results.25)
-ggsave("VolcanoPlot25.pdf", plot=vp25, path = "/tmp/repo/DGE_LADC/results/plots")
-vp5 <- volcano_plot(fit2.5, results.5)
-ggsave("VolcanoPlot5.pdf", plot=vp5, path = "/tmp/repo/DGE_LADC/results/plots")
-vp10 <- volcano_plot(fit2.10, results.10)
-ggsave("VolcanoPlot10.pdf", plot=vp10, path = "/tmp/repo/DGE_LADC/results/plots")
+volcano_plot <- function(resultTable) {
+  p <- ggplot(resultTable, aes(x=logFC, y=-log10(FDR), col=results)) + 
+    geom_point(size = 1.9) +
+    #scale_fill_manual(values=c("#999999", "#E69F00", "#56B4E9")) +
+    theme_minimal() +
+    xlab(paste("Log2(Fold Change)")) +
+    ylab("-log10(FDR)") +
+    theme(text = element_text(size=20)) + 
+    scale_colour_manual(values = c('#33FF00', '#000000', '#FF3300'))
+    #geom_text(aes(label=ifelse(results!=0,as.character(Genes),'')),hjust=0, vjust=0)
+  return(p)
+}
+
+
+##################################################################################################################
+resultTableNN <- DEGtable(log2.y)
+resultTable <- DEGtable(log2.y.qn)
+resultTable05 <- DEGtable(y.qn.05)
+resultTable1 <- DEGtable(y.qn.1)
+resultTable25 <- DEGtable(y.qn.25)
+resultTable5 <- DEGtable(y.qn.5)
+resultTable10 <- DEGtable(y.qn.10)
+
+vpNN <- volcano_plot(resultTableNN)
+ggsave("VolcanoPlotNN.jpeg", plot=vpNN, path = "/tmp/repo/DGE_LADC/results/plots")
+vp <- volcano_plot(resultTable)
+ggsave("VolcanoPlot.jpeg", plot=vp, path = "/tmp/repo/DGE_LADC/results/plots")
+vp05 <- volcano_plot(resultTable05)
+ggsave("VolcanoPlot05.jpeg", plot=vp05, path = "/tmp/repo/DGE_LADC/results/plots")
+vp1 <- volcano_plot(resultTable1)
+ggsave("VolcanoPlot1.jpeg", plot=vp1, path = "/tmp/repo/DGE_LADC/results/plots")
+vp25 <- volcano_plot(resultTable25)
+ggsave("VolcanoPlot25.jpeg", plot=vp25, path = "/tmp/repo/DGE_LADC/results/plots")
+vp5 <- volcano_plot(resultTable5)
+ggsave("VolcanoPlot5.jpeg", plot=vp5, path = "/tmp/repo/DGE_LADC/results/plots")
+vp10 <- volcano_plot(resultTable10)
+ggsave("VolcanoPlot10.jpeg", plot=vp10, path = "/tmp/repo/DGE_LADC/results/plots")
 
 ##################################################################################################################
 # Extraction of differentially expressed genes - comparison with the paper
 ##################################################################################################################
 
 #### TME-related genes
-length(which(results@.Data == 1))
-length(which(results@.Data == -1))
+length(which(resultTable$results == 1))
+length(which(resultTable$results == -1))
 
-diff.ex.genes <- read.csv(snakemake@input[[7]], sep='')
+diff.ex.genes <- read.csv(snakemake@input[[8]], sep='')
 ## add the results columns, 0, 1, -1
 diff.ex.genes$results <- rep(0, nrow(diff.ex.genes))
 diff.ex.genes[which(diff.ex.genes$Log2.Fold_Change.>1 & diff.ex.genes$pValue < 0.05), 'results'] <- 1
 diff.ex.genes[which(diff.ex.genes$Log2.Fold_Change.< (-1) & diff.ex.genes$pValue < 0.05), 'results'] <- -1
 
-my.diff.ex.genes <- (attributes(results@.Data)$dimnames[[1]])[which(results@.Data != 0)]
-
 ## how many of paper's DE Genes are in my DE Genes?
-sum(diff.ex.genes$Gene %in% my.diff.ex.genes) 
-## logged2 (0.05 added) data, limma-trend 48  
-## logged2 (0.1 added) data, limma-trend 47
+sum(diff.ex.genes$Gene %in%  resultTable$Genes[which(resultTable$results != 0)]) 
+## 77 
 
-sum(diff.ex.genes$Gene %in% attributes(results@.Data)$dimnames[[1]]) 
+sum(diff.ex.genes$Gene %in%  resultTable$Genes) 
 ## 91 in general 
 length(diff.ex.genes$Gene) 
 ## 2 gene not in the data set
-diff.ex.genes$Gene[which(!(diff.ex.genes$Gene %in% attributes(results@.Data)$dimnames[[1]]))] ## genes "TENM4" "WISP1" not in my data set
+diff.ex.genes$Gene[which(!(diff.ex.genes$Gene %in% resultTable$Genes))] ## genes "TENM4" "WISP1" not in my data set
 
 
 ##################################################################################################################
 # Extraction of differentially expressed genes - Venn Diagramms 
 ##################################################################################################################
 
-## Condition:
-DEGenes <- topTable(fit2, coef=1, number=Inf, adjust.method='BH', sort.by="P", genelist = attributes(log2.y.qn$counts)[[2]][[1]])
-DEGenes.05 <- topTable(fit2.05, coef=1, number=Inf, adjust.method='BH', sort.by="P", genelist = attributes(log2.y.qn$counts)[[2]][[1]])
-DEGenes.1 <- topTable(fit2.1, coef=1, number=Inf, adjust.method='BH', sort.by="P", genelist = attributes(log2.y.qn$counts)[[2]][[1]])
-DEGenes.25 <- topTable(fit2.25, coef=1, number=Inf, adjust.method='BH', sort.by="P", genelist = attributes(log2.y.qn$counts)[[2]][[1]])
-DEGenes.5 <- topTable(fit2.5, coef=1, number=Inf, adjust.method='BH', sort.by="P", genelist = attributes(log2.y.qn$counts)[[2]][[1]])
-DEGenes.10 <- topTable(fit2.10, coef=1, number=Inf, adjust.method='BH', sort.by="P", genelist = attributes(log2.y.qn$counts)[[2]][[1]])
+#genes.up = list(original.results =diff.ex.genes$Gene[which(diff.ex.genes$results == 1)], 
+#                dge = names(which(results@.Data[, 1]==1)), 
+#                dge.05 = names(which(results.05@.Data[, 1]==1)), 
+#                dge.1 = names(which(results.1@.Data[, 1]==1)), 
+#                dge.25 = names(which(results.25@.Data[, 1]==1)), 
+#                dge.5 = names(which(results.5@.Data[, 1]==1)), 
+#                dge.10 = names(which(results.10@.Data[, 1]==1)))
+#genes.down = list(original.results =diff.ex.genes$Gene[which(diff.ex.genes$results == -1)], 
+#                  dge = names(which(results@.Data[, 1]==-1)), 
+#                  dge.05 = names(which(results.05@.Data[, 1]==-1)), 
+#                  dge.1 = names(which(results.1@.Data[, 1]==-1)), 
+#                  dge.25 = names(which(results.25@.Data[, 1]==-1)), 
+#                  dge.5 = names(which(results.5@.Data[, 1]==-1)), 
+#                  dge.10 = names(which(results.10@.Data[, 1]==-1)))
 
-
-genes.up = list(original.results =diff.ex.genes$Gene[which(diff.ex.genes$results == 1)], 
-                dge = names(which(results@.Data[, 1]==1)), 
-                dge.05 = names(which(results.05@.Data[, 1]==1)), 
-                dge.1 = names(which(results.1@.Data[, 1]==1)), 
-                dge.25 = names(which(results.25@.Data[, 1]==1)), 
-                dge.5 = names(which(results.5@.Data[, 1]==1)), 
-                dge.10 = names(which(results.10@.Data[, 1]==1)))
-genes.down = list(original.results =diff.ex.genes$Gene[which(diff.ex.genes$results == -1)], 
-                  dge = names(which(results@.Data[, 1]==-1)), 
-                  dge.05 = names(which(results.05@.Data[, 1]==-1)), 
-                  dge.1 = names(which(results.1@.Data[, 1]==-1)), 
-                  dge.25 = names(which(results.25@.Data[, 1]==-1)), 
-                  dge.5 = names(which(results.5@.Data[, 1]==-1)), 
-                  dge.10 = names(which(results.10@.Data[, 1]==-1)))
-
-venn.diagram(genes.up[3:7], filename = "/tmp/repo/DGE_LADC/results/plots/vennUp1.tiff", 
-             fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#008E60"), imagetype="tiff", main = 'Venn Diagram comparing differentially private results')
+#venn.diagram(genes.up[3:7], filename = "/tmp/repo/DGE_LADC/results/plots/vennUp1.tiff", 
+#             fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#008E60"), imagetype="tiff", main = 'Venn Diagram comparing differentially private results')
             
-venn.diagram(genes.up[c(1,2,5,6,7)], filename = "/tmp/repo/DGE_LADC/results/plots/vennUp2.tiff", 
-             fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#008E60"), imagetype="tiff", main = 'Venn Diagram comparing the original results with the results obtained by DGEA')
+#venn.diagram(genes.up[c(1,2,5,6,7)], filename = "/tmp/repo/DGE_LADC/results/plots/vennUp2.tiff", 
+#             fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#008E60"), imagetype="tiff", main = 'Venn Diagram comparing the original results with the results obtained by DGEA')
 
 
-venn.diagram(genes.down[3:7], filename = "/tmp/repo/DGE_LADC/results/plots/vennDown1.tiff", 
-             fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#008E60"), imagetype="tiff", main = 'Venn Diagram comparing the differentially private results') 
+#venn.diagram(genes.down[3:7], filename = "/tmp/repo/DGE_LADC/results/plots/vennDown1.tiff", 
+#             fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#008E60"), imagetype="tiff", main = 'Venn Diagram comparing the differentially private results') 
             
-venn.diagram(genes.down[c(1,2,5,6,7)], filename = "/tmp/repo/DGE_LADC/results/plots/vennDown2.tiff", 
-             fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#008E60"), imagetype="tiff", main = 'Venn Diagram comparing the original results with the results obtained by DGEA')
+#venn.diagram(genes.down[c(1,2,5,6,7)], filename = "/tmp/repo/DGE_LADC/results/plots/vennDown2.tiff", 
+#             fill = c("#999999", "#E69F00", "#56B4E9", "#009E73", "#008E60"), imagetype="tiff", main = 'Venn Diagram comparing the original results with the results obtained by DGEA')
 
 
 ##################################################################################################################
@@ -168,10 +137,11 @@ venn.diagram(genes.down[c(1,2,5,6,7)], filename = "/tmp/repo/DGE_LADC/results/pl
 ##################################################################################################################
 
 
-write.csv(DEGenes, file=snakemake@output[[1]])
-write.csv(DEGenes.05, file=snakemake@output[[2]])
-write.csv(DEGenes.1, file=snakemake@output[[3]])
-write.csv(DEGenes.25, file=snakemake@output[[4]])
-write.csv(DEGenes.5, file=snakemake@output[[5]])
-write.csv(DEGenes.10, file=snakemake@output[[6]])
+write.csv(resultTable, file=snakemake@output[[1]])
+write.csv(resultTable05, file=snakemake@output[[2]])
+write.csv(resultTable1, file=snakemake@output[[3]])
+write.csv(resultTable25, file=snakemake@output[[4]])
+write.csv(resultTable5, file=snakemake@output[[5]])
+write.csv(resultTable10, file=snakemake@output[[6]])
+write.csv(resultTableNN, file=snakemake@output[[7]])
 
